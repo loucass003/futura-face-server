@@ -11,7 +11,7 @@ import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 import path from 'path';
 import { app, BrowserWindow, shell, ipcMain, session, dialog } from 'electron';
-// import { autoUpdater } from 'electron-updater';
+import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import { DeviceChannel } from '../ipcTypes';
 import MenuBuilder from './menu';
@@ -19,13 +19,6 @@ import { resolveHtmlPath } from './util';
 import { DevicesServer } from './DevicesServer';
 import { FaceTrainer } from './FaceTrainer';
 
-export default class AppUpdater {
-  constructor() {
-    log.transports.file.level = 'info';
-    // autoUpdater.logger = log;
-    // autoUpdater.checkForUpdatesAndNotify();
-  }
-}
 const deviceServer = new DevicesServer();
 const faceTrainer = new FaceTrainer();
 
@@ -42,6 +35,9 @@ const isDevelopment =
 if (isDevelopment) {
   require('electron-debug')();
 }
+
+log.transports.file.level = 'info';
+autoUpdater.logger = log;
 
 // const installExtensions = async () => {
 //   const installer = require('electron-devtools-installer');
@@ -151,3 +147,35 @@ app
     });
   })
   .catch(console.log);
+
+app.on('ready', () => {
+  autoUpdater.checkForUpdatesAndNotify();
+});
+
+function sendStatusToWindow(text) {
+  log.info(text);
+  // mainWindow.webContents.send('message', text);
+}
+
+autoUpdater.on('checking-for-update', () => {
+  sendStatusToWindow('Checking for update...');
+});
+autoUpdater.on('update-available', (info) => {
+  sendStatusToWindow('Update available.');
+});
+autoUpdater.on('update-not-available', (info) => {
+  sendStatusToWindow('Update not available.');
+});
+autoUpdater.on('error', (err) => {
+  sendStatusToWindow(`Error in auto-updater. ${err}`);
+});
+autoUpdater.on('download-progress', (progressObj) => {
+  let logMessage = `Download speed: ${progressObj.bytesPerSecond}`;
+  logMessage = `${logMessage} - Downloaded ${progressObj.percent}%`;
+  logMessage = `${logMessage} (${progressObj.transferred}/${progressObj.total})`;
+  sendStatusToWindow(logMessage);
+});
+autoUpdater.on('update-downloaded', (info) => {
+  sendStatusToWindow('Update downloaded');
+  autoUpdater.quitAndInstall();
+});
