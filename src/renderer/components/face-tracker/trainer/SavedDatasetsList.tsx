@@ -67,7 +67,12 @@ export function SavedDatasetsList() {
           </Paper>
         </Grid>
         <Grid item xs={12}>
-          <Typography variant="h5" gutterBottom component="div">
+          <Typography
+            variant="h5"
+            gutterBottom
+            component="div"
+            color="textPrimary"
+          >
             Saved Datasets List
           </Typography>
           <TableContainer component={Paper}>

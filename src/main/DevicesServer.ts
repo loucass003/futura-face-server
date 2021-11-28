@@ -76,6 +76,8 @@ export class DevicesServer {
       'face-tracker-model'
     );
 
-    return tf.node.loadSavedModel(modelPath);
+    return tf.node.loadSavedModel(
+      'C:\\Users\\louca\\Documents\\Futurabeast\\futura-face\\old\\saved_model'
+    );
   }
 }

@@ -8,6 +8,7 @@ import {
   Grid,
   Select,
 } from '@mui/material';
+import { GoBackButton } from '../commons/GoBackButton';
 
 export function NewDevice(props: any) {
   return (
@@ -15,7 +16,13 @@ export function NewDevice(props: any) {
       <Grid mt={2}>
         <Grid item>
           <Paper elevation={2}>
-            <Typography variant="h5" gutterBottom component="div">
+            <GoBackButton />
+            <Typography
+              variant="h5"
+              gutterBottom
+              component="div"
+              color="textPrimary"
+            >
               Create a new device
             </Typography>
             <Box

@@ -58,7 +58,7 @@ export function TrainerBlendShape() {
             <Typography variant="h6">{key}</Typography>
             <Grid container>
               {mergedShapes[key].map((key) => (
-                <Grid item xs={4} px={1} key={key}>
+                <Grid item xs={3} px={1} key={key}>
                   <Typography variant="caption">{key}</Typography>
                   <Slider
                     value={state.blendShapes[shapeKeys.indexOf(key)]}

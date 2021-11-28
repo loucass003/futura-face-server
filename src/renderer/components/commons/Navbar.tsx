@@ -14,14 +14,19 @@ import {
   ListItemIcon,
   ListItemText,
 } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function ButtonAppBar() {
   const [state, setState] = React.useState<boolean>(false);
+  const location = useLocation();
 
   const toggleDrawer = () => {
     setState((prev) => !prev);
   };
+
+  React.useEffect(() => {
+    setState(false);
+  }, [location]);
 
   return (
     <>
@@ -38,7 +43,13 @@ export default function ButtonAppBar() {
             >
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            <Typography
+              variant="h6"
+              sx={{ flexGrow: 1, textDecoration: 'none' }}
+              color="textPrimary"
+              component={Link}
+              to="/"
+            >
               Futura Server
             </Typography>
           </Toolbar>

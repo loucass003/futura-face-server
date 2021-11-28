@@ -17,7 +17,7 @@ export function DevicesList() {
 
   return (
     <>
-      <Typography variant="h5" gutterBottom component="div">
+      <Typography variant="h5" gutterBottom color="textPrimary">
         Devices
         <Button onClick={() => refresh()}>Refresh</Button>
       </Typography>
