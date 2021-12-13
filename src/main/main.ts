@@ -20,7 +20,7 @@ import { DevicesServer } from './DevicesServer';
 import { FaceTrainer } from './FaceTrainer';
 
 const deviceServer = new DevicesServer();
-const faceTrainer = new FaceTrainer();
+const faceTrainer = new FaceTrainer(deviceServer);
 
 let mainWindow: BrowserWindow | null = null;
 

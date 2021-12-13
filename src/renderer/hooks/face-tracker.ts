@@ -27,7 +27,6 @@ export interface FaceTracker {
   canvas: Ref<any>;
   flash: number;
   blendShapes: number[];
-  frameData: Buffer;
   changeFlash: (event: any) => void;
 }
 
@@ -42,18 +41,15 @@ export function useProvideFaceTracker(): FaceTracker {
     useState<FaceServerStatus>('waiting-for-device');
   const [flash, setFlash] = useState(0);
   const [blendShapes, setBlendShapes] = useState<number[]>();
-  const [frameData, setFrameData] = useState<Buffer>();
-
   const drawFrame = (event: any, data: FFTNewFrame) => {
     // TODO There is a memory leak here, need to fix that a some point
     if (!canvasRef.current) return;
+
     const ctx = canvasRef.current.getContext('2d');
 
     setBlendShapes(data.blendShapes);
 
     if (!ctx) return;
-
-    setFrameData(data.frame);
 
     let blob = new Blob([data.frame]);
     let image = new Image();
@@ -72,14 +68,6 @@ export function useProvideFaceTracker(): FaceTracker {
         return;
       }
       ctx.drawImage(image, 0, 0, 128, 128);
-      // if (predictions) {
-      //   data.points.forEach(({ x, y }) => {
-      //     ctx.beginPath();
-      //     ctx.fillStyle = 'red';
-      //     ctx.arc(x, y, 2, 0, 2 * Math.PI);
-      //     ctx.fill();
-      //   });
-      // }
       clear();
     };
     image.onerror = (error) => console.log(error);
@@ -122,8 +110,6 @@ export function useProvideFaceTracker(): FaceTracker {
   };
 
   useEffect(() => {
-    canvasRef.current.width = 128;
-    canvasRef.current.height = 128;
     nativeAPI.send(FFTChannel.Watch);
     nativeAPI.on(FFTChannel.NewFrame, drawFrame);
     nativeAPI.on(FFTChannel.Status, updateStatus);
@@ -136,6 +122,12 @@ export function useProvideFaceTracker(): FaceTracker {
     };
   }, []);
 
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    canvasRef.current.width = 128;
+    canvasRef.current.height = 128;
+  }, [canvasRef]);
+
   return {
     device: state.devices[id],
     status,
@@ -143,7 +135,6 @@ export function useProvideFaceTracker(): FaceTracker {
     flash,
     canvas: canvasRef,
     blendShapes,
-    frameData,
     changeFlash,
   };
 }

@@ -80,4 +80,10 @@ export class DevicesServer {
       'C:\\Users\\louca\\Documents\\Futurabeast\\futura-face\\old\\saved_model'
     );
   }
+
+  public getDefaultFaceTraker(): FuturaFaceTracker {
+    return this.getDevices().find(
+      ({ type }) => type === 'FuturaFaceTracker'
+    ) as FuturaFaceTracker;
+  }
 }

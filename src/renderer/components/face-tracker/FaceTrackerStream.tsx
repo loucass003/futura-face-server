@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useFaceTracker } from '../../hooks/face-tracker';
 
 export function FaceTrackerStream() {

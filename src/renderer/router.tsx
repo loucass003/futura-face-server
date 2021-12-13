@@ -20,16 +20,13 @@ export function Routes() {
       <Route path="/new-device" component={NewDevice} />
       <Route path="/face-tracker-settings" component={FaceTrackerSettings}></Route>
       <Route path="/face-tracker-datasets" exact component={SavedDatasetsList}></Route>
-      {/* <Route path="/face-tracker-train">
-          <Switch>
-            <Route path="/face-tracker-train" exact component={SavedDatasetsList}></Route>
-            <Route path="/face-tracker-train/:dataset">
-            <FaceTrainerProvider>
-              <FaceTrackerTainer></FaceTrackerTainer>
-            </FaceTrainerProvider>
-            </Route>
-          </Switch>
-      </Route> */}
+      <Route path="/face-tracker-train/:dataset">
+        <FaceTrackerProvider>
+          <FaceTrainerProvider>
+            <FaceTrainer></FaceTrainer>
+          </FaceTrainerProvider>
+        </FaceTrackerProvider>
+      </Route>
       <Route path="/FuturaFaceTracker/:id">
         <FaceTrackerProvider>
           <Switch>

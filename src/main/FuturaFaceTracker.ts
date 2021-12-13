@@ -12,12 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
 import { shapeKeys } from '../common-types';
-import {
-  FaceRecorderChannel,
-  FaceServerStatus,
-  FaceTrackerStatus,
-  FFTChannel,
-} from '../ipcTypes';
+import { FaceServerStatus, FaceTrackerStatus, FFTChannel } from '../ipcTypes';
 import { Device } from './Device';
 
 export class FuturaFaceTracker extends Device {
@@ -29,11 +24,7 @@ export class FuturaFaceTracker extends Device {
 
   private poolingInterval!: NodeJS.Timer;
 
-  // private recordEndTimout!: NodeJS.Timeout;
-
-  public record: string = null;
-
-  public currFrame = 0;
+  public currentFrame: Buffer;
 
   constructor(
     private renderer: WebContents,
@@ -176,6 +167,8 @@ export class FuturaFaceTracker extends Device {
         blendShapes: syncResult,
       });
     });
+
+    this.currentFrame = jpeg;
 
     // if (this.record) {
     //   if (this.currFrame % 10 === 0) {

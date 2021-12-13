@@ -5,3 +5,12 @@ interface IDevice {
   id: string;
   ip: string;
 }
+
+interface IBlendshape {
+  keys: number[];
+  imageData: string;
+}
+
+interface IDataset {
+  blendshapes: IBlendshape[];
+}

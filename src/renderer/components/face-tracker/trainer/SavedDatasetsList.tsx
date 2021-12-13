@@ -61,9 +61,9 @@ export function SavedDatasetsList() {
       <Grid container spacing={2} mt={2}>
         <Grid item xs={12}>
           <Paper>
-            <Button component={Link} to="/face-tracker-train/new">
+            {/* <Button component={Link} to="/face-tracker-train/new">
               Open Dataset ZIP
-            </Button>
+            </Button> */}
           </Paper>
         </Grid>
         <Grid item xs={12}>
