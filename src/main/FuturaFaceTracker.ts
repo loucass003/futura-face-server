@@ -29,7 +29,7 @@ export class FuturaFaceTracker extends Device {
 
   private poolingInterval!: NodeJS.Timer;
 
-  private recordEndTimout!: NodeJS.Timeout;
+  // private recordEndTimout!: NodeJS.Timeout;
 
   public record: string = null;
 
@@ -51,25 +51,25 @@ export class FuturaFaceTracker extends Device {
     super.init();
     this.startStreaming();
     this.toggleStatusUpdate();
-    ipcMain.on(FaceRecorderChannel.StartRecording, async (event) => {
-      event.sender.send(FaceRecorderChannel.RecordingStatus, {
-        status: 'recording',
-      });
-      this.record = `futura_server_face_record_${Date.now()}`;
-      const recordFolder = path.join(app.getPath('temp'), this.record);
-      await fsPromises.mkdir(recordFolder);
-      this.recordEndTimout = setTimeout(async () => {
-        this.record = null;
-        this.createDatasetFromRecord(event, recordFolder);
-      }, 30000);
-    });
-    ipcMain.on(FaceRecorderChannel.CancelRecording, () => {
-      this.record = null;
-      if (this.recordEndTimout) {
-        clearTimeout(this.recordEndTimout);
-        this.recordEndTimout = null;
-      }
-    });
+    // ipcMain.on(FaceRecorderChannel.StartRecording, async (event) => {
+    //   event.sender.send(FaceRecorderChannel.RecordingStatus, {
+    //     status: 'recording',
+    //   });
+    //   this.record = `futura_server_face_record_${Date.now()}`;
+    //   const recordFolder = path.join(app.getPath('temp'), this.record);
+    //   await fsPromises.mkdir(recordFolder);
+    //   this.recordEndTimout = setTimeout(async () => {
+    //     this.record = null;
+    //     this.createDatasetFromRecord(event, recordFolder);
+    //   }, 30000);
+    // });
+    // ipcMain.on(FaceRecorderChannel.CancelRecording, () => {
+    //   this.record = null;
+    //   if (this.recordEndTimout) {
+    //     clearTimeout(this.recordEndTimout);
+    //     this.recordEndTimout = null;
+    //   }
+    // });
     ipcMain.on(FFTChannel.SetFlash, this.changeFlash.bind(this));
     ipcMain.on(FFTChannel.Watch, () => {
       this.updateServerStatus(this.serverStatus, true);
@@ -177,22 +177,22 @@ export class FuturaFaceTracker extends Device {
       });
     });
 
-    if (this.record) {
-      if (this.currFrame % 10 === 0) {
-        const stream = fs.createWriteStream(
-          path.join(
-            app.getPath('temp'),
-            this.record,
-            `img-${this.currFrame}.jpg`
-          )
-        );
-        stream.once('open', () => {
-          stream.write(jpeg);
-          stream.end();
-        });
-      }
-      this.currFrame += 1;
-    }
+    // if (this.record) {
+    //   if (this.currFrame % 10 === 0) {
+    //     const stream = fs.createWriteStream(
+    //       path.join(
+    //         app.getPath('temp'),
+    //         this.record,
+    //         `img-${this.currFrame}.jpg`
+    //       )
+    //     );
+    //     stream.once('open', () => {
+    //       stream.write(jpeg);
+    //       stream.end();
+    //     });
+    //   }
+    //   this.currFrame += 1;
+    // }
   }
 
   public async getStatus(): Promise<FaceTrackerStatus> {
@@ -224,72 +224,72 @@ export class FuturaFaceTracker extends Device {
     this.toggleStatusUpdate();
   }
 
-  public async createDatasetFromRecord(
-    event: IpcMainEvent,
-    recordFolder: string
-  ) {
-    event.sender.send(FaceRecorderChannel.RecordingStatus, {
-      status: 'removing-duplicates',
-    });
-    // await removeDuplicates(recordFolder, {
-    //   threshold: 0.9,
-    //   tolerance: 0,
-    // });
+  // public async createDatasetFromRecord(
+  //   event: IpcMainEvent,
+  //   recordFolder: string
+  // ) {
+  //   event.sender.send(FaceRecorderChannel.RecordingStatus, {
+  //     status: 'removing-duplicates',
+  //   });
+  //   // await removeDuplicates(recordFolder, {
+  //   //   threshold: 0.9,
+  //   //   tolerance: 0,
+  //   // });
 
-    event.sender.send(FaceRecorderChannel.RecordingStatus, {
-      status: 'compressing',
-    });
-    const zip = new JSZip();
+  //   event.sender.send(FaceRecorderChannel.RecordingStatus, {
+  //     status: 'compressing',
+  //   });
+  //   const zip = new JSZip();
 
-    const datasetName = `recorded_dataset_${Date.now()}`;
+  //   const datasetName = `recorded_dataset_${Date.now()}`;
 
-    const files = await fsPromises.readdir(recordFolder);
-    if (!files || files.length === 0) {
-      throw new Error('No files in the directory');
-    }
-    const images = files.filter((name) => name.match(/.jpg/g));
+  //   const files = await fsPromises.readdir(recordFolder);
+  //   if (!files || files.length === 0) {
+  //     throw new Error('No files in the directory');
+  //   }
+  //   const images = files.filter((name) => name.match(/.jpg/g));
 
-    images.map((image) =>
-      zip.file(image, fs.createReadStream(path.join(recordFolder, image)))
-    );
-    zip.file(
-      'model.json',
-      JSON.stringify(
-        {
-          name: datasetName,
-          frames: Array.from({ length: images.length }).reduce<{
-            [key: string]: { blendShapes: number[] };
-          }>(
-            (frames, _, frame) => ({
-              ...frames,
-              [images[frame]]: {
-                blendShapes: Array.from({ length: shapeKeys.length }, () => 0),
-              },
-            }),
-            {}
-          ),
-        },
-        null,
-        2
-      )
-    );
+  //   images.map((image) =>
+  //     zip.file(image, fs.createReadStream(path.join(recordFolder, image)))
+  //   );
+  //   zip.file(
+  //     'model.json',
+  //     JSON.stringify(
+  //       {
+  //         name: datasetName,
+  //         frames: Array.from({ length: images.length }).reduce<{
+  //           [key: string]: { blendShapes: number[] };
+  //         }>(
+  //           (frames, _, frame) => ({
+  //             ...frames,
+  //             [images[frame]]: {
+  //               blendShapes: Array.from({ length: shapeKeys.length }, () => 0),
+  //             },
+  //           }),
+  //           {}
+  //         ),
+  //       },
+  //       null,
+  //       2
+  //     )
+  //   );
 
-    const datasetPath = path.join(
-      app.getPath('documents'),
-      'FuturaServer',
-      'datasets',
-      `${datasetName}.zip`
-    );
+  //   const datasetPath = path.join(
+  //     app.getPath('documents'),
+  //     'FuturaServer',
+  //     'datasets',
+  //     `${datasetName}.zip`
+  //   );
 
-    zip
-      .generateNodeStream({ type: 'nodebuffer', streamFiles: true })
-      .pipe(fs.createWriteStream(datasetPath))
-      .on('finish', () => {
-        event.sender.send(FaceRecorderChannel.RecordingStatus, {
-          status: 'done',
-        });
-      });
-  }
+  //   zip
+  //     .generateNodeStream({ type: 'nodebuffer', streamFiles: true })
+  //     .pipe(fs.createWriteStream(datasetPath))
+  //     .on('finish', () => {
+  //       event.sender.send(FaceRecorderChannel.RecordingStatus, {
+  //         status: 'done',
+  //       });
+  //     });
+  // }
 
   public updateServerStatus(status: FaceServerStatus, force = false) {
     if (status !== this.serverStatus || force) {

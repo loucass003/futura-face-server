@@ -8,52 +8,37 @@ import {
 import { useParams } from 'react-router';
 import { shapeKeys } from '../../../common-types';
 import { FaceTrainerChannel } from '../../../ipcTypes';
+import { useFaceTracker } from '../face-tracker';
 import { useNativeAPI } from '../native-api';
 
 export type TrainerAction =
   | {
-      type: 'load-dataset';
-      imagesCount: number;
-      datasetName: string;
-      datasetLoaded: boolean;
+      type: 'new-blendshape';
     }
   | {
-      type: 'update-blendshapes';
-      blendShapes: number[];
-    }
-  | {
-      type: 'next-picture';
-    }
-  | {
-      type: 'prev-picture';
-    }
-  | {
-      type: 'image-loading';
-    }
-  | {
-      type: 'set-image';
+      type: 'take-picture';
       image: string;
+      name: string;
     };
 
+export interface Blendshape {
+  keys: number[];
+  image: string;
+  name: string;
+}
+
 export interface TrainerState {
-  datasetLoaded: boolean;
-  imagesCount: number;
-  currImageIndex: number;
-  blendShapes: number[];
-  savedDatasets: string[];
-  datasetName: string;
-  imageLoading: boolean;
-  image?: string;
+  name: string;
+  blenshapesCount: number;
+  blendshapes: Array<Blendshape>;
+  currentBlendshapeIndex: number;
 }
 
 export interface FaceTrainerData {
-  prevImage: () => void;
-  nextImage: () => void;
+  newBlendShape: () => void;
+  takePicture: () => void;
   save: () => void;
-  reset: () => void;
-  setBlendShape: (
-    key: string
-  ) => (event: Event, value: number | number[]) => void;
+  currentBlendshape?: Blendshape;
   state: TrainerState;
 }
 
@@ -61,43 +46,35 @@ export const FaceTrainerContext = createContext<FaceTrainerData>(
   undefined as any
 );
 
+function createNewBlendShape() {
+  const blendshape = Array.from(
+    { length: Object.values(shapeKeys).length },
+    () => 0
+  );
+
+  return { keys: blendshape, image: null, name: null };
+}
+
 function reducer(state: TrainerState, action: TrainerAction): TrainerState {
   switch (action.type) {
-    case 'load-dataset': {
+    case 'new-blendshape': {
       return {
         ...state,
-        ...action,
+        blendshapes: [...state.blendshapes, createNewBlendShape()],
       };
     }
-    case 'next-picture': {
-      return {
-        ...state,
-        currImageIndex: state.currImageIndex + 1,
-      };
-    }
-    case 'prev-picture': {
-      return {
-        ...state,
-        currImageIndex: state.currImageIndex - 1,
-      };
-    }
-    case 'update-blendshapes': {
-      return {
-        ...state,
-        blendShapes: action.blendShapes,
-      };
-    }
-    case 'image-loading': {
-      return {
-        ...state,
-        imageLoading: true,
-      };
-    }
-    case 'set-image': {
-      return {
-        ...state,
-        imageLoading: false,
+    case 'take-picture': {
+      const blendshapes = [...state.blendshapes];
+
+      blendshapes[state.currentBlendshapeIndex] = {
+        ...blendshapes[state.currentBlendshapeIndex],
         image: action.image,
+        name: action.name,
+      };
+      console.log('hey');
+      return {
+        ...state,
+        blendshapes,
       };
     }
     default: {
@@ -108,111 +85,39 @@ function reducer(state: TrainerState, action: TrainerAction): TrainerState {
 
 export function useProvideFaceTrainer(): FaceTrainerData {
   const nativeAPI = useNativeAPI();
+  const { frameData } = useFaceTracker();
   const { dataset } = useParams<{ dataset: string }>();
   const [state, dispatch] = useReducer<Reducer<TrainerState, TrainerAction>>(
     reducer,
     {
-      datasetLoaded: false,
-      imagesCount: 0,
-      currImageIndex: 0,
-      blendShapes: Array.from({ length: shapeKeys.length }, () => 0),
-      savedDatasets: [],
-      datasetName: 'not-loaded',
-      imageLoading: false,
-    }
+      name: 'none',
+      blenshapesCount: 0,
+      currentBlendshapeIndex: 0,
+      blendshapes: [],
+    } as TrainerState
   );
 
-  const loadFiles = (
-    event: any,
-    {
-      imagesCount,
-      name,
-      ok,
-    }: { ok: boolean; imagesCount: number; name: string }
-  ) => {
-    dispatch({
-      type: 'load-dataset',
-      imagesCount,
-      datasetName: name,
-      datasetLoaded: ok,
-    });
-  };
-
-  const updateBlendShapes = (
-    event: any,
-    { blendShapes }: { blendShapes: number[] }
-  ) => {
-    dispatch({ type: 'update-blendshapes', blendShapes });
-  };
-
-  const receiveImage = (event: any, payload: { image: string }) => {
-    dispatch({
-      type: 'set-image',
-      image: `data:image/jpg;base64,${payload.image}`,
-    });
-  };
-
   useEffect(() => {
-    nativeAPI.on(FaceTrainerChannel.DatasetLoaded, loadFiles);
-    nativeAPI.on(FaceTrainerChannel.UpdateBlendShapes, updateBlendShapes);
-    nativeAPI.on(FaceTrainerChannel.ReceiveImage, receiveImage);
-
-    return () => {
-      nativeAPI.removeListener(FaceTrainerChannel.DatasetLoaded, loadFiles);
-      nativeAPI.removeListener(
-        FaceTrainerChannel.UpdateBlendShapes,
-        updateBlendShapes
-      );
-      nativeAPI.removeListener(FaceTrainerChannel.ReceiveImage, receiveImage);
-    };
+    return () => {};
   }, []);
-
-  useEffect(() => {
-    if (!state.datasetLoaded) return;
-    nativeAPI.send(FaceTrainerChannel.AskImage, {
-      index: state.currImageIndex,
-    });
-    dispatch({ type: 'image-loading' });
-  }, [state.currImageIndex, state.datasetLoaded]);
-
-  useEffect(() => {
-    if (!dataset) return;
-    nativeAPI.send(FaceTrainerChannel.OpenDataset, {
-      name: dataset === 'new' ? undefined : dataset,
-    });
-  }, [dataset]);
 
   return {
     state,
-    nextImage: () => dispatch({ type: 'next-picture' }),
-    prevImage: () => dispatch({ type: 'prev-picture' }),
-    setBlendShape:
-      (name: string) => (event: Event, value: number | number[]) => {
-        const val = value as number;
-        const shapes = [...state.blendShapes];
-        shapes[shapeKeys.indexOf(name)] = val;
-        dispatch({ type: 'update-blendshapes', blendShapes: shapes });
-        nativeAPI.send(FaceTrainerChannel.SetBlendShapes, {
-          values: shapes,
-          frame: state.currImageIndex,
-        });
-      },
-    reset: () => {
-      const shapes = Array.from({ length: state.blendShapes.length }, () => 0);
+    newBlendShape: () => dispatch({ type: 'new-blendshape' }),
+    takePicture: () => {
+      const name = `record_image_${Date.now()}.jpg`;
       dispatch({
-        type: 'update-blendshapes',
-        blendShapes: shapes,
+        type: 'take-picture',
+        image: `data:image/jpg;base64,${frameData.toString('base64url')}`,
+        name,
       });
-      nativeAPI.send(FaceTrainerChannel.SetBlendShapes, {
-        values: shapes,
-        frame: state.currImageIndex,
-      });
-    },
-    save: () => {
-      nativeAPI.send(FaceTrainerChannel.SaveDataset, {
-        name: state.datasetName,
+      nativeAPI.send(FaceTrainerChannel.SavePicture, {
+        image: frameData,
+        name,
       });
     },
+    save: () => {},
+    currentBlendshape: state.blendshapes[state.currentBlendshapeIndex],
   };
 }
 

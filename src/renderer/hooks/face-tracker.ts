@@ -27,8 +27,8 @@ export interface FaceTracker {
   canvas: Ref<any>;
   flash: number;
   blendShapes: number[];
+  frameData: Buffer;
   changeFlash: (event: any) => void;
-  setPredictions: (value: boolean) => void;
 }
 
 export function useProvideFaceTracker(): FaceTracker {
@@ -41,8 +41,8 @@ export function useProvideFaceTracker(): FaceTracker {
   const [serverStatus, setServerStatus] =
     useState<FaceServerStatus>('waiting-for-device');
   const [flash, setFlash] = useState(0);
-  const [predictions, setPredictions] = useState<boolean>(true);
   const [blendShapes, setBlendShapes] = useState<number[]>();
+  const [frameData, setFrameData] = useState<Buffer>();
 
   const drawFrame = (event: any, data: FFTNewFrame) => {
     // TODO There is a memory leak here, need to fix that a some point
@@ -52,6 +52,9 @@ export function useProvideFaceTracker(): FaceTracker {
     setBlendShapes(data.blendShapes);
 
     if (!ctx) return;
+
+    setFrameData(data.frame);
+
     let blob = new Blob([data.frame]);
     let image = new Image();
     image.src = URL.createObjectURL(blob);
@@ -131,7 +134,7 @@ export function useProvideFaceTracker(): FaceTracker {
       nativeAPI.removeListener(FFTChannel.Status, updateStatus);
       nativeAPI.removeListener(FFTChannel.ServerStatus, updateServerStatus);
     };
-  }, [predictions]);
+  }, []);
 
   return {
     device: state.devices[id],
@@ -140,8 +143,8 @@ export function useProvideFaceTracker(): FaceTracker {
     flash,
     canvas: canvasRef,
     blendShapes,
+    frameData,
     changeFlash,
-    setPredictions,
   };
 }
 

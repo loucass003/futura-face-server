@@ -34,7 +34,7 @@ export function FaceTracker() {
               <Typography variant="h5" gutterBottom component="div">
                 Face Tracker Stream
               </Typography>
-              <FaceTrackerStream noPredictions={false} />
+              <FaceTrackerStream/>
             </Box>
           </Paper>
         </Grid>

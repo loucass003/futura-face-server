@@ -27,14 +27,8 @@ export enum DeviceChannel {
 }
 
 export enum FaceTrainerChannel {
-  OpenDataset = 'open-dataset',
-  SaveDataset = 'save-dataset',
-  DatasetLoaded = 'dataset-loaded',
+  SavePicture = 'save-picture',
   DeleteDataset = 'delete-dataset',
-  AskImage = 'ask-image',
-  ReceiveImage = 'receive-image',
-  SetBlendShapes = 'set-blend-shapes',
-  UpdateBlendShapes = 'update-blend-shapes',
   SavedDatasets = 'saved-datasets',
   AskSavedDatasets = 'ask-saved-datasets',
 }
@@ -60,21 +54,8 @@ export interface IpcChannelMap {
   [DeviceChannel.CreateDeviceServer]: void;
   [DeviceChannel.RequestDevices]: void;
   [DeviceChannel.Devices]: { devices: IDevice[] };
-  [FaceTrainerChannel.OpenDataset]: { name?: string };
   [FaceTrainerChannel.DeleteDataset]: { name: string };
-  [FaceTrainerChannel.SaveDataset]: { name: string };
-  [FaceTrainerChannel.DatasetLoaded]: {
-    ok: boolean;
-    imagesCount: number;
-    name: string;
-  };
-  [FaceTrainerChannel.AskImage]: { index: number };
-  [FaceTrainerChannel.ReceiveImage]: { image: string };
-  [FaceTrainerChannel.SetBlendShapes]: {
-    values: number[];
-    frame: number;
-  };
-  [FaceTrainerChannel.UpdateBlendShapes]: { blendShapes: number[] };
+  [FaceTrainerChannel.SavePicture]: { image: Buffer; name: string };
   [FaceTrainerChannel.SavedDatasets]: { datasets_names: string[] };
   [FaceTrainerChannel.AskSavedDatasets]: void;
   [FaceRecorderChannel.StartRecording]: void;

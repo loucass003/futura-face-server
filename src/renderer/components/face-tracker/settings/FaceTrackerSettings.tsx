@@ -6,8 +6,8 @@ export function FaceTrackerSettings() {
     <Container>
       <Grid container spacing={2} mt={2}>
         <Grid item xs={6}>
-          <Button component={Link} to="/face-tracker-train">
-            Train
+          <Button component={Link} to="/face-tracker-datasets">
+            Datasets
           </Button>
         </Grid>
         <Grid item xs={6} />
