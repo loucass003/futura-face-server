@@ -33,7 +33,7 @@ that will analyse your mouth shape and predict the mouth blendshapes.
 A blendshape is an animation property that affect part of a 3d model. For example the `jawleft` blendshapes
 will move the jaw to the left with all itermediary poses between 0 and 1
 
-![View of the tracker on a quest](readme_assets/blendshape.gif?raw=true)
+![View of the tracker on a quest](readme_assets/blendshape.gif)
 
 
 ### Disclamer
