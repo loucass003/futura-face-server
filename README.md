@@ -43,11 +43,11 @@ will move the jaw to the left with all itermediary poses between 0 and 1
 ### How can i build one ?
 
 Parts list:
-	- 1xESP CAM
-	- 1xWS2812 LED (only need one)
-	- Usb battery
-	- Usb cable to solder on
-	- (Recomended) 3d printer to print the attachments and cases for the module
+ - 1xESP CAM
+ - 1xWS2812 LED (only need one)
+ - Usb battery
+ - Usb cable to solder on
+ - (Recomended) 3d printer to print the attachments and cases for the module
 
 Here is a wirering diagram on how to build it:
 
