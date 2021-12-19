@@ -54,8 +54,11 @@ Here is a wirering diagram on how to build it:
 ![Wirering diagram](readme_assets/FaceTrackerWirering_bb.png?raw=true)
 
 There is also 3d models for attaching the tracker to the headset.
+
 Currently supports:
- - Quest 2
+ - [Quest 2](https://github.com/Futurabeast/FaceTrackerAssets/tree/main/Quest2)
+
+
 
  ### How to upload the firmware on the module ?
 
