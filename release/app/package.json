@@ -1,7 +1,7 @@
 {
   "name": "futura-face-server",
   "productName": "electron-react-boilerplate",
-  "version": "4.3.6",
+  "version": "5.0.0",
   "description": "Futura devices server",
   "main": "./dist/main/main.js",
   "author": {

@@ -72,11 +72,26 @@ export class FaceTrainer {
         const datasetPath = this.getDatasetPath(dataset);
         const data = await fsPromises.readFile(datasetPath);
         const zip = await JSZip.loadAsync(data);
-        const imageData = await zip.file(`images/${index}.jpg`).async('base64');
+        let imageData = null;
+        const imagePath = `images/${index}.jpg`;
+        if (zip.files[imagePath])
+          imageData = await zip.file(imagePath).async('base64');
         event.sender.send(FaceTrainerChannel.ReceiveTookPicture, {
           index,
           image: imageData,
         });
+      }
+    );
+
+    ipcMain.on(
+      FaceTrainerChannel.DeletePicture,
+      async (event, { name, index }) => {
+        const datasetPath = this.getDatasetPath(name);
+        const data = await fsPromises.readFile(datasetPath);
+        const zip = await JSZip.loadAsync(data);
+        const imagePath = `images/${index}.jpg`;
+        if (zip.files[imagePath]) await zip.remove(imagePath);
+        await this.saveZip(datasetPath, zip);
       }
     );
   }
@@ -103,9 +118,10 @@ export class FaceTrainer {
         return {
           keys: model.blendshapes[key].shape,
           imageData:
-            index === 0
+            index === 0 && zip.files[key]
               ? `data:image/jpg;base64,${await zip.file(key).async('base64')}`
               : null,
+          imageExists: !!zip.files[key],
         };
       })
     );

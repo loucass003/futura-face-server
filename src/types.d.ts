@@ -9,6 +9,7 @@ interface IDevice {
 interface IBlendshape {
   keys: number[];
   imageData: string;
+  imageExists: boolean;
 }
 
 interface IDataset {

@@ -3,7 +3,6 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useRef } from 'react';
 import { Model } from '../face-tracker/trainer/FaceModel';
 
-
 function Camera(props) {
   const ref = useRef(null);
 
@@ -27,16 +26,15 @@ function Camera(props) {
 export function Face3DView({ blendShapes }: { blendShapes: number[] }) {
   return (
     <Paper>
-      <Canvas style={{ height: '400px' }}>
-          <Suspense fallback={null}>
-            <Camera position={[0, -0.05, 0.1]} fov={60} near={0.001} />
-            <pointLight position={[10, 0, 10]} />
-            <pointLight position={[0, 0, 10]} intensity={0.25} />
-            <pointLight position={[0, 0, 0.3]} intensity={0.25} />
-            <Model blendShapes={blendShapes} />
-          </Suspense>
+      <Canvas style={{ minHeight: '400px' }}>
+        <Suspense fallback={null}>
+          <Camera position={[0, -0.05, 0.1]} fov={60} near={0.001} />
+          <pointLight position={[10, 0, 10]} />
+          <pointLight position={[0, 0, 10]} intensity={0.25} />
+          <pointLight position={[0, 0, 0.3]} intensity={0.25} />
+          <Model blendShapes={blendShapes} />
+        </Suspense>
       </Canvas>
     </Paper>
-
   );
 }

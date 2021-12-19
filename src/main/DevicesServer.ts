@@ -3,9 +3,13 @@ import { WebContents, ipcMain, app } from 'electron';
 import * as tf from '@tensorflow/tfjs-node';
 import { TFSavedModel } from '@tensorflow/tfjs-node/dist/saved_model';
 import path from 'path';
+import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { Device } from './Device';
 import { FuturaFaceTracker } from './FuturaFaceTracker';
 import { DeviceChannel } from '../ipcTypes';
+import { getSerialPorts } from './util';
+import { BINARIES_PATHS, FIRMWARES_PATHS, MODELS_PATHS } from './binaries';
+import { getPlatform } from './platform';
 
 export class DevicesServer {
   private bonjour!: Bonjour;
@@ -17,6 +21,8 @@ export class DevicesServer {
   public started: boolean = false;
 
   public faceModel!: TFSavedModel;
+
+  public uploadProcess: ChildProcessWithoutNullStreams;
 
   public async start(sender: WebContents): Promise<void> {
     this.started = true;
@@ -39,6 +45,77 @@ export class DevicesServer {
 
     ipcMain.on(DeviceChannel.RequestDevices, () => {
       this.sendDevices();
+    });
+
+    ipcMain.on(DeviceChannel.RequestSerialDevices, async (event) => {
+      event.sender.send(DeviceChannel.SerialDevices, {
+        devices: await getSerialPorts(),
+      });
+    });
+
+    ipcMain.on(
+      DeviceChannel.UploadFirmware,
+      async (event, { device, deviceType, command }) => {
+        const esptoolPath = BINARIES_PATHS.esptool;
+        const firmwarePath = FIRMWARES_PATHS[deviceType];
+
+        const [path, ...args] = command
+          .replaceAll('{ESPTOOL_PATH}', esptoolPath)
+          .replaceAll('{DEVICE_PORT}', device)
+          .replaceAll(
+            '{ESPRESSIF_BOOTLOADER_PATH}',
+            FIRMWARES_PATHS.espressif.bootloader
+          )
+          .replaceAll('{DEVICE_PARTITION_PATH}', firmwarePath.partitions)
+          .replaceAll('{ESPRESSIF_BOOT_PATH}', FIRMWARES_PATHS.espressif.boot)
+          .replaceAll('{DEVICE_FIRMWARE_PATH}', firmwarePath.firmware)
+          .replaceAll('\n', '')
+          .split(' ');
+
+        this.uploadProcess = spawn(path, args);
+
+        event.sender.send(DeviceChannel.UploadStatus, {
+          status: 'STARTING',
+          progress: 0,
+        });
+
+        this.uploadProcess.stdout.on('data', (data) => {
+          if (this.uploadProcess) {
+            const progressMatch = data
+              .toString()
+              .match(/Writing at \S+\.\.\. \((?<progress>\d+) %\)/);
+            if (progressMatch) {
+              event.sender.send(DeviceChannel.UploadStatus, {
+                status: 'UPLOADING',
+                progress: +progressMatch.groups.progress,
+              });
+            }
+          }
+        });
+
+        this.uploadProcess.on('close', (exitCode) => {
+          if (this.uploadProcess) {
+            event.sender.send(DeviceChannel.UploadStatus, {
+              status: 'DONE',
+              exitCode,
+              progress: 0,
+            });
+          }
+        });
+      }
+    );
+
+    ipcMain.on(DeviceChannel.CancelUpload, (event) => {
+      if (!this.uploadProcess) return;
+      if (getPlatform() === 'win')
+        spawn('taskkill', ['/pid', `${this.uploadProcess.pid}`, '/f', '/t']);
+      else this.uploadProcess.kill('SIGKILL');
+      event.sender.send(DeviceChannel.UploadStatus, {
+        status: 'NONE',
+        exitCode: 0,
+        progress: 0,
+      });
+      this.uploadProcess = null;
     });
   }
 
@@ -69,16 +146,7 @@ export class DevicesServer {
   }
 
   public async loadTensorflowModel(): Promise<TFSavedModel> {
-    const modelPath = path.join(
-      app.getPath('documents'),
-      'FuturaServer',
-      'models',
-      'face-tracker-model'
-    );
-
-    return tf.node.loadSavedModel(
-      'C:\\Users\\louca\\Documents\\Futurabeast\\futura-face\\old\\saved_model'
-    );
+    return tf.node.loadSavedModel(MODELS_PATHS.FuturaFaceTracker);
   }
 
   public getDefaultFaceTraker(): FuturaFaceTracker {

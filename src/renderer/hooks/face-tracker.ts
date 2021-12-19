@@ -67,7 +67,7 @@ export function useProvideFaceTracker(): FaceTracker {
         clear();
         return;
       }
-      ctx.drawImage(image, 0, 0, 128, 128);
+      ctx.drawImage(image, 0, 0, 240, 240, 0, 0, 240, 240);
       clear();
     };
     image.onerror = (error) => console.log(error);
@@ -107,6 +107,8 @@ export function useProvideFaceTracker(): FaceTracker {
     { status }: { status: FaceServerStatus }
   ) => {
     setServerStatus(status);
+    canvasRef.current.width = 240;
+    canvasRef.current.height = 240;
   };
 
   useEffect(() => {
@@ -121,12 +123,6 @@ export function useProvideFaceTracker(): FaceTracker {
       nativeAPI.removeListener(FFTChannel.ServerStatus, updateServerStatus);
     };
   }, []);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    canvasRef.current.width = 128;
-    canvasRef.current.height = 128;
-  }, [canvasRef]);
 
   return {
     device: state.devices[id],
