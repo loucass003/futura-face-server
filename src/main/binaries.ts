@@ -1,14 +1,19 @@
 import path from 'path';
-import { rootPath as root } from 'electron-root-path';
+import { rootPath } from 'electron-root-path';
 import { isPackaged } from 'electron-is-packaged';
 import { getPlatform } from './platform';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
-const binariesPath = path.join(root, './resources', getPlatform(), './bin');
+const root = isPackaged ? path.join(rootPath, 'futura-server') : rootPath;
+
+const binariesPath = isPackaged
+  ? path.join(root, './resources', './bin')
+  : path.join(root, './resources', getPlatform(), './bin');
 
 export const BINARIES_PATHS = {
   esptool: path.join(binariesPath, './esptool.exe'),
+  ffmpeg: path.join(binariesPath, './ffmpeg.exe'),
 };
 
 const firmwarePath =

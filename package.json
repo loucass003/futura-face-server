@@ -1,5 +1,5 @@
 {
-  "name": "futura-face-server",
+  "name": "futura-server",
   "productName": "FuturaServer",
   "description": "Futura devices server",
   "scripts": {

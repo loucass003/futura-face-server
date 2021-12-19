@@ -2,13 +2,13 @@ import Pj2 from 'pipe2jpeg';
 import { spawn, ChildProcessByStdio } from 'child_process';
 import { WebContents, ipcMain, app, IpcMainEvent } from 'electron';
 import fetch from 'node-fetch';
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import { URLSearchParams } from 'url';
 import * as tf from '@tensorflow/tfjs-node';
 import { TFSavedModel } from '@tensorflow/tfjs-node/dist/saved_model';
 import { Tensor } from '@tensorflow/tfjs-node';
 import { FaceServerStatus, FaceTrackerStatus, FFTChannel } from '../ipcTypes';
 import { Device } from './Device';
+import { BINARIES_PATHS } from './binaries';
 
 export class FuturaFaceTracker extends Device {
   public status!: FaceTrackerStatus;
@@ -110,7 +110,7 @@ export class FuturaFaceTracker extends Device {
       this.onJPEGImage(jpeg);
     });
 
-    this.ffmpeg = spawn(ffmpegInstaller.path, params, {
+    this.ffmpeg = spawn(BINARIES_PATHS.ffmpeg, params, {
       stdio: ['ignore', 'pipe', 'ignore'],
     });
 

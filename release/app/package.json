@@ -1,6 +1,6 @@
 {
-  "name": "futura-face-server",
-  "productName": "electron-react-boilerplate",
+  "name": "futura-server",
+  "productName": "futura-server",
   "version": "5.0.0",
   "description": "Futura devices server",
   "main": "./dist/main/main.js",
@@ -16,7 +16,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@tensorflow/tfjs-node": "^3.11.0"
   }
 }
