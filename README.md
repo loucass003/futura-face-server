@@ -13,7 +13,7 @@ It currently supports:
 You will get a warning from windows because this project does not have any cerificates
 Just click the "More info" button then "Run anyway"
 
-After that the server shoud do automatic updates if you content is added
+After that the server shoud do automatic updates if new content is added
 
 
 # Futura Face Tracker
@@ -60,7 +60,7 @@ Currently supports:
 
 
 
- ### How to upload the firmware on the module ?
+### How to upload the firmware on the module ?
 
 The Server has a menu where you can upload the firmware from via usb.
 You might require a driver for the ESP-CAM module, so it can be detected as a serial device by the computer

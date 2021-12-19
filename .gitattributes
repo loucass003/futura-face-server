@@ -12,3 +12,6 @@
 *.woff  binary
 *.woff2 binary
 *.data-* binary
+*.pb binary
+*.index binary
+*.glb binary
