@@ -13,7 +13,7 @@ It currently supports:
 You will get a warning from Windows because this project does not have any cerificates.
 Just click the "More info" button then "Run anyway"
 
-After that the server shoud automaticly update so your content is added.
+After that the server shoud automaticly update when new content is added.
 
 
 # Futura Face Tracker
