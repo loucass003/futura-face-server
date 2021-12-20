@@ -20,7 +20,7 @@ export type TrainerAction =
       dataset?: IDataset;
     }
   | {
-      type: 'random-blendshape'
+      type: 'random-blendshape';
     }
   | {
       type: 'add-blendshape';
@@ -46,7 +46,7 @@ export type TrainerAction =
 
 export interface TrainerState {
   name: string;
-  blendshapes: Array<IBlendshape>;
+  blendshapes: Record<string, IBlendshape>;
   currentBlendshapeIndex: number;
   datasetLoading: boolean;
   imageLoading: boolean;
@@ -62,6 +62,7 @@ export interface FaceTrainerData {
   nextBlendshape: () => void;
   save: () => void;
   currentBlendshape?: IBlendshape;
+  blendshapesCount: number;
   state: TrainerState;
 }
 
@@ -86,59 +87,83 @@ function reducer(state: TrainerState, action: TrainerAction): TrainerState {
       };
     }
     case 'add-blendshape': {
+      const len = Object.keys(state.blendshapes).length;
       return {
         ...state,
-        blendshapes: [...state.blendshapes, createNewBlendShape()],
-        currentBlendshapeIndex: state.blendshapes.length,
+        blendshapes: {
+          ...state.blendshapes,
+          [`images/${len}.jpg`]: createNewBlendShape(),
+        },
+        currentBlendshapeIndex: len,
       };
     }
     case 'delete-blendshape': {
-      const blendshapes = [...state.blendshapes];
-      blendshapes.splice(state.currentBlendshapeIndex, 1);
+      // const blendshapes = [...state.blendshapes];
+      // blendshapes.splice(state.currentBlendshapeIndex, 1);
+      delete state.blendshapes[`images/${state.currentBlendshapeIndex}.jpg`];
+
       return {
         ...state,
-        blendshapes,
         currentBlendshapeIndex: Math.max(0, state.currentBlendshapeIndex - 1),
       };
     }
     case 'random-blendshape': {
-      const blendshapes = [...state.blendshapes];
-
-      blendshapes[state.currentBlendshapeIndex] = {
-        ...blendshapes[state.currentBlendshapeIndex],
-        keys: randomFaceShape(),
-      };
+      // const blendshapes = [...state.blendshapes];
+      // blendshapes[state.currentBlendshapeIndex] = {
+      //   ...blendshapes[state.currentBlendshapeIndex],
+      //   keys: randomFaceShape(),
+      // };
       return {
         ...state,
-        blendshapes,
+        blendshapes: {
+          ...state.blendshapes,
+          [`images/${state.currentBlendshapeIndex}.jpg`]: {
+            ...state.blendshapes[`images/${state.currentBlendshapeIndex}.jpg`],
+            keys: randomFaceShape(),
+          },
+        },
       };
     }
     case 'take-picture': {
-      const blendshapes = [...state.blendshapes];
+      // const blendshapes = [...state.blendshapes];
 
-      blendshapes[action.index] = {
-        ...blendshapes[action.index],
-        imageData: action.image,
-        imageExists: true,
-      };
+      // blendshapes[action.index] = {
+      //   ...blendshapes[action.index],
+      //   imageData: action.image,
+      //   imageExists: true,
+      // };
       return {
         ...state,
-        blendshapes,
+        blendshapes: {
+          ...state.blendshapes,
+          [`images/${action.index}.jpg`]: {
+            ...state.blendshapes[`images/${action.index}.jpg`],
+            imageData: action.image,
+            imageExists: !!action.image,
+          },
+        },
         imageLoading: false,
       };
     }
     case 'delete-picture': {
-      const blendshapes = [...state.blendshapes];
+      // const blendshapes = [...state.blendshapes];
 
-      blendshapes[action.index] = {
-        ...blendshapes[action.index],
-        imageData: null,
-        imageExists: false,
-      };
+      // blendshapes[action.index] = {
+      //   ...blendshapes[action.index],
+      //   imageData: null,
+      //   imageExists: false,
+      // };
 
       return {
         ...state,
-        blendshapes,
+        blendshapes: {
+          ...state.blendshapes,
+          [`images/${action.index}.jpg`]: {
+            ...state.blendshapes[`images/${action.index}.jpg`],
+            imageData: null,
+            imageExists: false,
+          },
+        },
       };
     }
     case 'next-blendshape': {
@@ -170,7 +195,7 @@ export function useProvideFaceTrainer(): FaceTrainerData {
     {
       name: null,
       currentBlendshapeIndex: 0,
-      blendshapes: [createNewBlendShape()],
+      blendshapes: { [`images/0.jpg`]: createNewBlendShape() },
       datasetLoading: true,
       imageLoading: true,
     } as TrainerState
@@ -200,6 +225,7 @@ export function useProvideFaceTrainer(): FaceTrainerData {
 
   const onReceiveDataset = (event, { name, dataset }) => {
     dispatch({ type: 'open-dataset', name, dataset });
+
     if (dataset) {
       askPicture(name, state.currentBlendshapeIndex);
     }
@@ -229,19 +255,19 @@ export function useProvideFaceTrainer(): FaceTrainerData {
   return {
     state,
     prevBlendshape: () => {
-      dispatch({ type: 'prev-blendshape' });
       askPicture(state.name, state.currentBlendshapeIndex - 1);
+      dispatch({ type: 'prev-blendshape' });
     },
     nextBlendshape: () => {
-      dispatch({ type: 'next-blendshape' });
       askPicture(state.name, state.currentBlendshapeIndex + 1);
+      dispatch({ type: 'next-blendshape' });
     },
     addBlendshape: () => {
       dispatch({ type: 'add-blendshape' });
     },
     deleteBlendshape: () => {
-      dispatch({ type: 'delete-blendshape' });
       deletePicture(state.name, state.currentBlendshapeIndex);
+      dispatch({ type: 'delete-blendshape' });
     },
     deletePicture: () => {
       dispatch({
@@ -259,12 +285,15 @@ export function useProvideFaceTrainer(): FaceTrainerData {
       nativeAPI.send(FaceTrainerChannel.TakePicture, {
         dataset: state.name,
         index: state.currentBlendshapeIndex,
-        shapesCount: state.blendshapes.length,
-        blendshapes: state.blendshapes[state.currentBlendshapeIndex].keys,
+        shapesCount: Object.keys(state.blendshapes).length,
+        blendshapes:
+          state.blendshapes[`images/${state.currentBlendshapeIndex}.jpg`].keys,
       });
     },
     save: () => {},
-    currentBlendshape: state.blendshapes[state.currentBlendshapeIndex],
+    currentBlendshape:
+      state.blendshapes[`images/${state.currentBlendshapeIndex}.jpg`],
+    blendshapesCount: Object.keys(state.blendshapes).length,
   };
 }
 

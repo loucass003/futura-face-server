@@ -16,15 +16,19 @@ export function FaceTrainer() {
     randomBlendshape,
     state,
     currentBlendshape,
+    blendshapesCount,
   } = useFaceTrainer();
+
+  console.log(currentBlendshape);
 
   return (
     (!state.datasetLoading && currentBlendshape && (
       <Container>
+        {currentBlendshape.toString()}
         <Grid container spacing={2} mt={2}>
           <Grid item xs={12}>
             <Paper>
-              {currentBlendshape.imageData ? (
+              {currentBlendshape.imageExists ? (
                 <Button onClick={deletePicture}>Delete picture</Button>
               ) : (
                 <Button onClick={takePicture}>Take picture</Button>
@@ -32,16 +36,17 @@ export function FaceTrainer() {
 
               <Button
                 onClick={addBlendshape}
-                disabled={
-                  state.currentBlendshapeIndex >= state.blendshapes.length
-                }
+                disabled={state.currentBlendshapeIndex >= blendshapesCount}
               >
                 Add Blendshape
               </Button>
 
               <Button
                 onClick={deleteBlendshape}
-                disabled={state.blendshapes.length === 1}
+                disabled={
+                  blendshapesCount - 1 !== state.currentBlendshapeIndex ||
+                  state.currentBlendshapeIndex === 0
+                }
               >
                 Delete Blendshape
               </Button>
@@ -54,14 +59,10 @@ export function FaceTrainer() {
               >
                 Prev
               </Button>
-              {`${state.currentBlendshapeIndex + 1} / ${
-                state.blendshapes.length
-              }`}
+              {`${state.currentBlendshapeIndex + 1} / ${blendshapesCount}`}
               <Button
                 onClick={nextBlendshape}
-                disabled={
-                  state.currentBlendshapeIndex === state.blendshapes.length - 1
-                }
+                disabled={state.currentBlendshapeIndex === blendshapesCount - 1}
               >
                 NEXT
               </Button>
@@ -70,12 +71,15 @@ export function FaceTrainer() {
                 component={Link}
                 to="/face-tracker-datasets"
                 disabled={
-                  !!state.blendshapes.find(({ imageExists }) => !imageExists)
+                  !!Object.values(state.blendshapes).find(
+                    ({ imageExists }) => !imageExists
+                  )
                 }
               >
                 Done{' '}
-                {state.blendshapes.find(({ imageExists }) => !imageExists) &&
-                  '(There is some blendshapes with no pictures)'}
+                {Object.values(state.blendshapes).find(
+                  ({ imageExists }) => !imageExists
+                ) && '(There is some blendshapes with no pictures)'}
               </Button>
             </Paper>
           </Grid>

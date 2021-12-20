@@ -45,6 +45,11 @@ export function useProvideFaceTracker(): FaceTracker {
     // TODO There is a memory leak here, need to fix that a some point
     if (!canvasRef.current) return;
 
+    if (canvasRef.current.width !== 240) {
+      canvasRef.current.width = 240;
+      canvasRef.current.height = 240;
+    }
+
     const ctx = canvasRef.current.getContext('2d');
 
     setBlendShapes(data.blendShapes);
@@ -107,6 +112,7 @@ export function useProvideFaceTracker(): FaceTracker {
     { status }: { status: FaceServerStatus }
   ) => {
     setServerStatus(status);
+    if (!canvasRef.current) return;
     canvasRef.current.width = 240;
     canvasRef.current.height = 240;
   };

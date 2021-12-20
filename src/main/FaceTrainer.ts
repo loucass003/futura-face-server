@@ -1,18 +1,12 @@
-import { ipcMain, dialog, app, IpcMainEvent } from 'electron';
+import { ipcMain, app } from 'electron';
 import JSZip from 'jszip';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
-import { DataSaverOff } from '@mui/icons-material';
-import { shapeKeys } from '../common-types';
 import { FaceTrainerChannel } from '../ipcTypes';
 import { DevicesServer } from './DevicesServer';
 
 export class FaceTrainer {
-  private datasetsFiles: { [file: string]: JSZip.JSZipObject } = {};
-
-  private currentDataset: string = null;
-
   constructor(private devicesServer: DevicesServer) {}
 
   public init() {
@@ -97,8 +91,6 @@ export class FaceTrainer {
   }
 
   private async openDataset(name: string): Promise<IDataset> {
-    this.currentDataset = name;
-
     const datasetPath = this.getDatasetPath(name);
 
     try {
@@ -113,18 +105,29 @@ export class FaceTrainer {
     const data = await fsPromises.readFile(datasetPath);
     const zip = await JSZip.loadAsync(data);
     const model = JSON.parse(await zip.file('model.json').async('string'));
-    const blendshapes = await Promise.all(
-      Object.keys(model.blendshapes).map(async (key: string, index) => {
-        return {
-          keys: model.blendshapes[key].shape,
-          imageData:
-            index === 0 && zip.files[key]
-              ? `data:image/jpg;base64,${await zip.file(key).async('base64')}`
-              : null,
-          imageExists: !!zip.files[key],
-        };
-      })
-    );
+    // const blendshapes = await Promise.all(
+    //   Object.keys(model.blendshapes).map(async (key: string, index) => {
+    //     return {
+    //       keys: model.blendshapes[key].shape,
+    //       imageData:
+    //         index === 0 && zip.files[key]
+    //           ? `data:image/jpg;base64,${await zip.file(key).async('base64')}`
+    //           : null,
+    //       imageExists: !!zip.files[key],
+    //     };
+    //   })
+    // );
+
+    const blendshapes = Object.keys(model.blendshapes).reduce((out, curr) => {
+      return {
+        ...out,
+        [curr]: {
+          keys: model.blendshapes[curr].shape,
+          imageData: null,
+          imageExists: !!zip.files[curr],
+        },
+      };
+    }, {});
 
     return { blendshapes };
   }

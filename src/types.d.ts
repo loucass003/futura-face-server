@@ -13,5 +13,5 @@ interface IBlendshape {
 }
 
 interface IDataset {
-  blendshapes: IBlendshape[];
+  blendshapes: { [key: string]: IBlendshape };
 }
