@@ -30,7 +30,7 @@ export class FaceTrainer {
     );
 
     ipcMain.on(
-      FaceTrainerChannel.TakePicture,
+      FaceTrainerChannel.RecordPose,
       async (event, { dataset, index, blendshapes }) => {
         const currentFrame =
           this.devicesServer.getDefaultFaceTraker().currentFrame;
@@ -48,7 +48,7 @@ export class FaceTrainer {
         zip.file('model.json', JSON.stringify(model, null, 2));
         zip.file(imageFile, currentFrame);
         await this.saveZip(datasetPath, zip);
-        event.sender.send(FaceTrainerChannel.ReceiveTookPicture, {
+        event.sender.send(FaceTrainerChannel.ReceiveRecord, {
           index,
           image: currentFrame.toString('base64'),
         });
