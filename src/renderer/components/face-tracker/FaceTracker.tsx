@@ -34,7 +34,7 @@ export function FaceTracker() {
               <Typography variant="h5" gutterBottom component="div">
                 Face Tracker Stream
               </Typography>
-              <FaceTrackerStream/>
+              <FaceTrackerStream />
             </Box>
           </Paper>
         </Grid>
@@ -44,7 +44,9 @@ export function FaceTracker() {
               <Typography variant="h5" gutterBottom component="div">
                 Face Tracker 3D View
               </Typography>
-              {blendShapes && blendShapes.length > 0 && <Face3DView blendShapes={blendShapes}/>}
+              {blendShapes && blendShapes.length > 0 && (
+                <Face3DView blendShapes={blendShapes} />
+              )}
             </Box>
           </Paper>
         </Grid>

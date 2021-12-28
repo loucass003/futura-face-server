@@ -36,13 +36,13 @@ export enum DeviceChannel {
 export enum FaceTrainerChannel {
   OpenDataset = 'ft-open-dataset',
   ReceiveDataset = 'ft-receive-dataset',
-  TakePicture = 'ft-take-picture',
-  DeletePicture = 'ft-delete-picture',
+  RecordPose = 'ft-record-pose',
+  DeleteRecord = 'ft-delete-record',
   DeleteDataset = 'ft-delete-dataset',
   SavedDatasets = 'ft-saved-datasets',
   AskSavedDatasets = 'ft-ask-saved-datasets',
-  ReceiveTookPicture = 'ft-receive-took-picture',
-  AskPicture = 'ft-ask-picture',
+  ReceiveRecord = 'ft-receive-record',
+  AskRecord = 'ft-ask-record',
 }
 
 export type FFTNewFrame = {
@@ -76,15 +76,15 @@ export interface IpcChannelMap {
   [FaceTrainerChannel.OpenDataset]: { name: string };
   [FaceTrainerChannel.ReceiveDataset]: { name: string; dataset?: IDataset };
   [FaceTrainerChannel.DeleteDataset]: { name: string };
-  [FaceTrainerChannel.DeletePicture]: { name: string; index: number };
-  [FaceTrainerChannel.TakePicture]: {
+  [FaceTrainerChannel.DeleteRecord]: { name: string; index: number };
+  [FaceTrainerChannel.RecordPose]: {
     dataset: string;
     index: number;
     blendshapes: number[];
     shapesCount: number;
   };
-  [FaceTrainerChannel.AskPicture]: { index: number; dataset: string };
-  [FaceTrainerChannel.ReceiveTookPicture]: { image: string; index: number };
+  [FaceTrainerChannel.AskRecord]: { index: number; dataset: string };
+  [FaceTrainerChannel.ReceiveRecord]: { frames: string[]; index: number };
   [FaceTrainerChannel.SavedDatasets]: { datasets_names: string[] };
   [FaceTrainerChannel.AskSavedDatasets]: void;
 }

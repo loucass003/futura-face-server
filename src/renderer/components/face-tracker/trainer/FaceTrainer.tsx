@@ -7,36 +7,35 @@ import { FaceTrackerStream } from '../FaceTrackerStream';
 
 export function FaceTrainer() {
   const {
-    takePicture,
-    deletePicture,
+    takeRecord,
+    deleteRecord,
     addBlendshape,
     prevBlendshape,
     nextBlendshape,
     deleteBlendshape,
     randomBlendshape,
     state,
-    currentBlendshape,
-    blendshapesCount,
   } = useFaceTrainer();
 
-  console.log(currentBlendshape);
-
   return (
-    (!state.datasetLoading && currentBlendshape && (
+    (!state.datasetLoading && state.currentBlendshape && (
       <Container>
-        {currentBlendshape.toString()}
         <Grid container spacing={2} mt={2}>
           <Grid item xs={12}>
             <Paper>
-              {currentBlendshape.imageExists ? (
-                <Button onClick={deletePicture}>Delete picture</Button>
+              {state.currentRecord ? (
+                <Button onClick={deleteRecord}>Delete record</Button>
               ) : (
-                <Button onClick={takePicture}>Take picture</Button>
+                <Button onClick={takeRecord}>Take record</Button>
               )}
 
               <Button
                 onClick={addBlendshape}
-                disabled={state.currentBlendshapeIndex >= blendshapesCount}
+                disabled={
+                  state.currentBlendshapeIndex !== state.blendshapesCount - 1 ||
+                  !state.currentRecord ||
+                  state.recordLoading
+                }
               >
                 Add Blendshape
               </Button>
@@ -44,7 +43,7 @@ export function FaceTrainer() {
               <Button
                 onClick={deleteBlendshape}
                 disabled={
-                  blendshapesCount - 1 !== state.currentBlendshapeIndex ||
+                  state.blendshapesCount - 1 !== state.currentBlendshapeIndex ||
                   state.currentBlendshapeIndex === 0
                 }
               >
@@ -59,10 +58,14 @@ export function FaceTrainer() {
               >
                 Prev
               </Button>
-              {`${state.currentBlendshapeIndex + 1} / ${blendshapesCount}`}
+              {`${state.currentBlendshapeIndex + 1} / ${
+                state.blendshapesCount
+              }`}
               <Button
                 onClick={nextBlendshape}
-                disabled={state.currentBlendshapeIndex === blendshapesCount - 1}
+                disabled={
+                  state.currentBlendshapeIndex === state.blendshapesCount - 1
+                }
               >
                 NEXT
               </Button>
@@ -71,26 +74,23 @@ export function FaceTrainer() {
                 component={Link}
                 to="/face-tracker-datasets"
                 disabled={
-                  !!Object.values(state.blendshapes).find(
-                    ({ imageExists }) => !imageExists
-                  )
+                  !state.currentBlendshape ||
+                  state.recordLoading ||
+                  !state.currentRecord
                 }
               >
-                Done{' '}
-                {Object.values(state.blendshapes).find(
-                  ({ imageExists }) => !imageExists
-                ) && '(There is some blendshapes with no pictures)'}
+                Done
               </Button>
             </Paper>
           </Grid>
           <Grid item xs={6}>
             <Paper>
               <Box p={2}>
-                {!state.imageLoading ? (
+                {!state.recordLoading ? (
                   <>
-                    {currentBlendshape.imageData ? (
+                    {state.currentRecord ? (
                       <img
-                        src={currentBlendshape.imageData}
+                        src={state.currentRecord[0]}
                         alt={`${state.currentBlendshapeIndex}`}
                         style={{ width: '100%' }}
                       />
@@ -105,7 +105,7 @@ export function FaceTrainer() {
             </Paper>
           </Grid>
           <Grid item xs={6}>
-            <Face3DView blendShapes={currentBlendshape.keys} />
+            <Face3DView blendShapes={state.currentBlendshape} />
             {/* <Face3DView blendShapes={blendShapes}/> */}
           </Grid>
         </Grid>

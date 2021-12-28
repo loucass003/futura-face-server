@@ -8,8 +8,8 @@ interface IDevice {
 
 interface IBlendshape {
   keys: number[];
-  imageData: string;
-  imageExists: boolean;
+  record: string[];
+  recordExists: boolean;
 }
 
 interface IDataset {

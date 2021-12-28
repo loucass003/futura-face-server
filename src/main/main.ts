@@ -105,10 +105,9 @@ const createWindow = async () => {
     if (deviceServer && !deviceServer.started) {
       // Shoud not start server again if already declared
       deviceServer.start(event.sender);
+      faceTrainer.init(event.sender);
     }
   });
-
-  faceTrainer.init();
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({

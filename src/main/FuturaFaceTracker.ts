@@ -1,11 +1,13 @@
 import Pj2 from 'pipe2jpeg';
 import { spawn, ChildProcessByStdio } from 'child_process';
-import { WebContents, ipcMain, app, IpcMainEvent } from 'electron';
+import { WebContents, ipcMain } from 'electron';
 import fetch from 'node-fetch';
+import { Subject } from 'rxjs';
 import { URLSearchParams } from 'url';
 import * as tf from '@tensorflow/tfjs-node';
 import { TFSavedModel } from '@tensorflow/tfjs-node/dist/saved_model';
 import { Tensor } from '@tensorflow/tfjs-node';
+import { EventEmitter } from 'stream';
 import { FaceServerStatus, FaceTrackerStatus, FFTChannel } from '../ipcTypes';
 import { Device } from './Device';
 import { BINARIES_PATHS } from './binaries';
@@ -20,6 +22,8 @@ export class FuturaFaceTracker extends Device {
   private poolingInterval!: NodeJS.Timer;
 
   public currentFrame: Buffer;
+
+  public newFramesSubject = new Subject<Buffer>();
 
   constructor(
     private renderer: WebContents,
@@ -145,6 +149,7 @@ export class FuturaFaceTracker extends Device {
     });
 
     this.currentFrame = jpeg;
+    this.newFramesSubject.next(jpeg);
   }
 
   public async getStatus(): Promise<FaceTrackerStatus> {

@@ -1,15 +1,25 @@
-import { ipcMain, app } from 'electron';
+import { ipcMain, app, WebContents } from 'electron';
 import JSZip from 'jszip';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
+import { Subscription } from 'rxjs';
 import { FaceTrainerChannel } from '../ipcTypes';
 import { DevicesServer } from './DevicesServer';
 
 export class FaceTrainer {
+  private recordedFrames: Buffer[];
+
+  private renderer: WebContents;
+
+  private recordingSubscription: Subscription;
+
+  private FRAMES_PER_BLENDSHAPES = 50;
+
   constructor(private devicesServer: DevicesServer) {}
 
-  public init() {
+  public init(renderer: WebContents) {
+    this.renderer = renderer;
     ipcMain.on(FaceTrainerChannel.AskSavedDatasets, async (event) => {
       const datasets = await this.getSavedDatasets();
       event.sender.send(FaceTrainerChannel.SavedDatasets, {
@@ -30,28 +40,34 @@ export class FaceTrainer {
     );
 
     ipcMain.on(
-      FaceTrainerChannel.TakePicture,
+      FaceTrainerChannel.RecordPose,
       async (event, { dataset, index, blendshapes }) => {
-        const currentFrame =
-          this.devicesServer.getDefaultFaceTraker().currentFrame;
-
-        const datasetPath = this.getDatasetPath(dataset);
-        const data = await fsPromises.readFile(datasetPath);
-        const zip = await JSZip.loadAsync(data);
-
-        const model = zip.files['model.json']
-          ? JSON.parse(await zip.file('model.json').async('string'))
-          : { blendshapes: {} };
-
-        const imageFile = `images/${index}.jpg`;
-        model.blendshapes[imageFile] = { shape: blendshapes };
-        zip.file('model.json', JSON.stringify(model, null, 2));
-        zip.file(imageFile, currentFrame);
-        await this.saveZip(datasetPath, zip);
-        event.sender.send(FaceTrainerChannel.ReceiveTookPicture, {
-          index,
-          image: currentFrame.toString('base64'),
-        });
+        this.recordingSubscription = this.devicesServer
+          .getDefaultFaceTraker()
+          .newFramesSubject.subscribe(async (frame) => {
+            this.recordedFrames.push(frame);
+            if (this.recordedFrames.length === this.FRAMES_PER_BLENDSHAPES) {
+              this.unsubscribeRecording();
+              const datasetPath = this.getDatasetPath(dataset);
+              const data = await fsPromises.readFile(datasetPath);
+              const zip = await JSZip.loadAsync(data);
+              const model = zip.files['model.json']
+                ? JSON.parse(await zip.file('model.json').async('string'))
+                : { blendshapes: {} };
+              model.blendshapes[`images/${index}`] = { shape: blendshapes };
+              zip.file('model.json', JSON.stringify(model, null, 2));
+              this.recordedFrames.forEach((frame, imageIndex) => {
+                zip.file(`images/${index}/${imageIndex}.jpg`, frame);
+              });
+              await this.saveZip(datasetPath, zip);
+              event.sender.send(FaceTrainerChannel.ReceiveRecord, {
+                index,
+                frames: this.recordedFrames.map((frame) =>
+                  frame.toString('base64')
+                ),
+              });
+            }
+          });
       }
     );
 
@@ -61,33 +77,54 @@ export class FaceTrainer {
     });
 
     ipcMain.on(
-      FaceTrainerChannel.AskPicture,
+      FaceTrainerChannel.AskRecord,
       async (event, { dataset, index }) => {
         const datasetPath = this.getDatasetPath(dataset);
         const data = await fsPromises.readFile(datasetPath);
         const zip = await JSZip.loadAsync(data);
-        let imageData = null;
-        const imagePath = `images/${index}.jpg`;
-        if (zip.files[imagePath])
-          imageData = await zip.file(imagePath).async('base64');
-        event.sender.send(FaceTrainerChannel.ReceiveTookPicture, {
+        let frames = null;
+
+        if (zip.files[`images/${index}/0.jpg`])
+          frames = await Promise.all(
+            Array.from({ length: this.FRAMES_PER_BLENDSHAPES }).map(
+              (_, imageIndex) =>
+                zip.file(`images/${index}/${imageIndex}.jpg`).async('base64')
+            )
+          );
+        else {
+          frames = null;
+        }
+
+        event.sender.send(FaceTrainerChannel.ReceiveRecord, {
           index,
-          image: imageData,
+          frames,
         });
       }
     );
 
     ipcMain.on(
-      FaceTrainerChannel.DeletePicture,
+      FaceTrainerChannel.DeleteRecord,
       async (event, { name, index }) => {
         const datasetPath = this.getDatasetPath(name);
         const data = await fsPromises.readFile(datasetPath);
         const zip = await JSZip.loadAsync(data);
-        const imagePath = `images/${index}.jpg`;
-        if (zip.files[imagePath]) await zip.remove(imagePath);
+
+        Array.from({ length: this.FRAMES_PER_BLENDSHAPES }).forEach(
+          (_, imageIndex) => {
+            const imagePath = `images/${index}/${imageIndex}.jpg`;
+            if (zip.files[imagePath]) zip.remove(imagePath);
+          }
+        );
+
         await this.saveZip(datasetPath, zip);
       }
     );
+  }
+
+  private unsubscribeRecording() {
+    if (this.recordingSubscription) {
+      this.recordingSubscription.unsubscribe();
+    }
   }
 
   private async openDataset(name: string): Promise<IDataset> {
@@ -105,26 +142,14 @@ export class FaceTrainer {
     const data = await fsPromises.readFile(datasetPath);
     const zip = await JSZip.loadAsync(data);
     const model = JSON.parse(await zip.file('model.json').async('string'));
-    // const blendshapes = await Promise.all(
-    //   Object.keys(model.blendshapes).map(async (key: string, index) => {
-    //     return {
-    //       keys: model.blendshapes[key].shape,
-    //       imageData:
-    //         index === 0 && zip.files[key]
-    //           ? `data:image/jpg;base64,${await zip.file(key).async('base64')}`
-    //           : null,
-    //       imageExists: !!zip.files[key],
-    //     };
-    //   })
-    // );
 
     const blendshapes = Object.keys(model.blendshapes).reduce((out, curr) => {
       return {
         ...out,
         [curr]: {
           keys: model.blendshapes[curr].shape,
-          imageData: null,
-          imageExists: !!zip.files[curr],
+          record: null,
+          recordExists: !!zip.files[`images/${curr}/0.jpg`],
         },
       };
     }, {});
@@ -143,24 +168,23 @@ export class FaceTrainer {
     });
   }
 
+  public getDatasetsPath() {
+    return path.join(app.getPath('documents'), 'FuturaServer', 'datasets');
+  }
+
   public getDatasetPath(name: string) {
-    return path.join(
-      app.getPath('documents'),
-      'FuturaServer',
-      'datasets',
-      `${name}.zip`
-    );
+    return path.join(this.getDatasetsPath(), `${name}.zip`);
   }
 
   public async getSavedDatasets(): Promise<string[]> {
-    const savedir = path.join(
-      app.getPath('documents'),
-      'FuturaServer',
-      'datasets'
-    );
-    const files = await fsPromises.readdir(savedir);
-    return files
-      .filter((name) => name.match(/.zip/g))
-      .map((name) => name.substr(0, name.length - 4));
+    const savedir = this.getDatasetsPath();
+    try {
+      const files = await fsPromises.readdir(savedir);
+      return files
+        .filter((name) => name.match(/.zip/g))
+        .map((name) => name.substr(0, name.length - 4));
+    } catch {
+      return [];
+    }
   }
 }
