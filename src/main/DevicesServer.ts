@@ -1,8 +1,7 @@
 import bonjourInit, { Bonjour } from 'bonjour';
 import { WebContents, ipcMain, app } from 'electron';
-import * as tf from '@tensorflow/tfjs-node';
-import { TFSavedModel } from '@tensorflow/tfjs-node/dist/saved_model';
-import path from 'path';
+import * as tf from '@tensorflow/tfjs-node-gpu';
+import { TFSavedModel } from '@tensorflow/tfjs-node-gpu/dist/saved_model';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { Device } from './Device';
 import { FuturaFaceTracker } from './FuturaFaceTracker';
@@ -30,6 +29,7 @@ export class DevicesServer {
     // bonjourInit().publish({ name: 'FuturaServer', host: 'FuturaServer.local', type: 'futura', port: this.port })
     this.bonjour = bonjourInit();
 
+    // Maybe load it only if there is at least a face tracker a some point
     this.faceModel = await this.loadTensorflowModel();
 
     this.bonjour

@@ -1,13 +1,13 @@
 import Pj2 from 'pipe2jpeg';
 import { spawn, ChildProcessByStdio } from 'child_process';
 import { WebContents, ipcMain } from 'electron';
-import fetch from 'node-fetch';
+import fetch from 'cross-fetch';
 import { Subject } from 'rxjs';
 import { URLSearchParams } from 'url';
-import * as tf from '@tensorflow/tfjs-node';
-import { TFSavedModel } from '@tensorflow/tfjs-node/dist/saved_model';
-import { Tensor } from '@tensorflow/tfjs-node';
-import { EventEmitter } from 'stream';
+import * as tf from '@tensorflow/tfjs-node-gpu';
+import { TFSavedModel } from '@tensorflow/tfjs-node-gpu/dist/saved_model';
+import { Tensor } from '@tensorflow/tfjs-node-gpu';
+import { shapeKeys } from '../common-types';
 import { FaceServerStatus, FaceTrackerStatus, FFTChannel } from '../ipcTypes';
 import { Device } from './Device';
 import { BINARIES_PATHS } from './binaries';
@@ -87,9 +87,8 @@ export class FuturaFaceTracker extends Device {
       /* log info to console */
       '-loglevel',
       'quiet',
-
       '-timeout',
-      '2000',
+      '10000',
       '-i',
       this.streamUrl,
 
@@ -132,31 +131,37 @@ export class FuturaFaceTracker extends Device {
     tf.tidy(() => {
       const grayscale = tf.node
         .decodeJpeg(jpeg)
-        .resizeBilinear([128, 128])
-        .reshape([128, 128, 3])
-        .mean(2)
+        .resizeBilinear([224, 224])
+        .reshape([224, 224, 3])
+        .mean(2);
+      const input = tf
+        .stack([grayscale, grayscale, grayscale], 2)
+        .reshape([3, 224, 224])
         .div(255)
         .toFloat()
-        .expandDims(0)
-        .expandDims(-1);
-      const result = this.model.predict(grayscale) as Tensor;
+        .expandDims(0);
+      // console.log(input.dataSync());
+      const result = this.model.predict(input) as Tensor;
       const syncResult = result.dataSync();
       this.renderer.send(FFTChannel.NewFrame, {
         deviceId: this.id,
         frame: jpeg,
         blendShapes: syncResult,
       });
+      this.currentFrame = jpeg;
+      this.newFramesSubject.next(jpeg);
     });
-
-    this.currentFrame = jpeg;
-    this.newFramesSubject.next(jpeg);
   }
 
   public async getStatus(): Promise<FaceTrackerStatus> {
-    const data = await fetch(`http://${this.ip}:82/status`).then((res) =>
-      res.json()
-    );
-    this.status = data as FaceTrackerStatus;
+    try {
+      const data = await fetch(`http://${this.ip}:82/status`).then((res) =>
+        res.json()
+      );
+      this.status = data as FaceTrackerStatus;
+    } catch (e) {
+      this.status = null;
+    }
     return this.status;
   }
 

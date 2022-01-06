@@ -4,17 +4,19 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { Subscription } from 'rxjs';
+import { spawn } from 'child_process';
+import { BINARIES_PATHS } from './binaries';
 import { FaceTrainerChannel } from '../ipcTypes';
 import { DevicesServer } from './DevicesServer';
 
 export class FaceTrainer {
-  private recordedFrames: Buffer[];
+  private recordedFrames: number = 0;
 
   private renderer: WebContents;
 
   private recordingSubscription: Subscription;
 
-  private FRAMES_PER_BLENDSHAPES = 50;
+  private FRAMES_PER_BLENDSHAPES = 120;
 
   constructor(private devicesServer: DevicesServer) {}
 
@@ -42,30 +44,73 @@ export class FaceTrainer {
     ipcMain.on(
       FaceTrainerChannel.RecordPose,
       async (event, { dataset, index, blendshapes }) => {
+        const recordTmpFile = path.join(
+          app.getPath('temp'),
+          `dataset-${dataset}-record-${index}.mp4`
+        );
+
+        const params = [
+          '-r',
+          '60',
+          '-framerate',
+          '60',
+          '-f',
+          'image2pipe',
+          '-s',
+          `240x240`,
+          '-i',
+          '-',
+          '-vcodec',
+          'libx264',
+          '-crf',
+          '5',
+          '-pix_fmt',
+          'yuv420p',
+          '-r',
+          '60',
+          '-vsync',
+          '0',
+          recordTmpFile,
+        ];
+
+        const ffmpeg = spawn(BINARIES_PATHS.ffmpeg, params);
+
+        ffmpeg.on('exit', async () => {
+          const datasetPath = this.getDatasetPath(dataset);
+          const data = await fsPromises.readFile(datasetPath);
+          const zip = await JSZip.loadAsync(data);
+          const model = zip.files['model.json']
+            ? JSON.parse(await zip.file('model.json').async('string'))
+            : { blendshapes: {}, version: '0.0.1' };
+          model.blendshapes[`records/${index}`] = { shape: blendshapes };
+          zip.file('model.json', JSON.stringify(model, null, 2));
+          const record = await fsPromises.readFile(recordTmpFile);
+          zip.file(`records/${index}.mp4`, record);
+
+          await this.saveZip(datasetPath, zip);
+
+          event.sender.send(FaceTrainerChannel.ReceiveRecord, {
+            index,
+            record,
+          });
+          await fsPromises.rm(recordTmpFile);
+        });
+
+        let done = false;
+
         this.recordingSubscription = this.devicesServer
           .getDefaultFaceTraker()
-          .newFramesSubject.subscribe(async (frame) => {
-            this.recordedFrames.push(frame);
-            if (this.recordedFrames.length === this.FRAMES_PER_BLENDSHAPES) {
+          .newFramesSubject.subscribe((frame) => {
+            if (done) return;
+
+            if (this.recordedFrames >= this.FRAMES_PER_BLENDSHAPES) {
               this.unsubscribeRecording();
-              const datasetPath = this.getDatasetPath(dataset);
-              const data = await fsPromises.readFile(datasetPath);
-              const zip = await JSZip.loadAsync(data);
-              const model = zip.files['model.json']
-                ? JSON.parse(await zip.file('model.json').async('string'))
-                : { blendshapes: {} };
-              model.blendshapes[`images/${index}`] = { shape: blendshapes };
-              zip.file('model.json', JSON.stringify(model, null, 2));
-              this.recordedFrames.forEach((frame, imageIndex) => {
-                zip.file(`images/${index}/${imageIndex}.jpg`, frame);
-              });
-              await this.saveZip(datasetPath, zip);
-              event.sender.send(FaceTrainerChannel.ReceiveRecord, {
-                index,
-                frames: this.recordedFrames.map((frame) =>
-                  frame.toString('base64')
-                ),
-              });
+              ffmpeg.stdin.end();
+              this.recordedFrames = 0;
+              done = true;
+            } else {
+              ffmpeg.stdin.write(frame);
+              this.recordedFrames += 1;
             }
           });
       }
@@ -82,22 +127,17 @@ export class FaceTrainer {
         const datasetPath = this.getDatasetPath(dataset);
         const data = await fsPromises.readFile(datasetPath);
         const zip = await JSZip.loadAsync(data);
-        let frames = null;
+        let record = null;
 
-        if (zip.files[`images/${index}/0.jpg`])
-          frames = await Promise.all(
-            Array.from({ length: this.FRAMES_PER_BLENDSHAPES }).map(
-              (_, imageIndex) =>
-                zip.file(`images/${index}/${imageIndex}.jpg`).async('base64')
-            )
-          );
+        if (zip.files[`records/${index}.mp4`])
+          record = await zip.file(`records/${index}.mp4`).async('nodebuffer');
         else {
-          frames = null;
+          record = null;
         }
 
         event.sender.send(FaceTrainerChannel.ReceiveRecord, {
           index,
-          frames,
+          record,
         });
       }
     );
@@ -109,12 +149,8 @@ export class FaceTrainer {
         const data = await fsPromises.readFile(datasetPath);
         const zip = await JSZip.loadAsync(data);
 
-        Array.from({ length: this.FRAMES_PER_BLENDSHAPES }).forEach(
-          (_, imageIndex) => {
-            const imagePath = `images/${index}/${imageIndex}.jpg`;
-            if (zip.files[imagePath]) zip.remove(imagePath);
-          }
-        );
+        const recordPath = `records/${index}.mp4`;
+        if (zip.files[recordPath]) zip.remove(recordPath);
 
         await this.saveZip(datasetPath, zip);
       }
@@ -149,7 +185,7 @@ export class FaceTrainer {
         [curr]: {
           keys: model.blendshapes[curr].shape,
           record: null,
-          recordExists: !!zip.files[`images/${curr}/0.jpg`],
+          recordExists: !!zip.files[`records/${curr}.mp4`],
         },
       };
     }, {});

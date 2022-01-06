@@ -42,9 +42,5 @@ const modelsPath =
     : path.join(root, './assets/models');
 
 export const MODELS_PATHS = {
-  FuturaFaceTracker: path.join(
-    modelsPath,
-    'futura-face-tracker',
-    'face-tracker-model'
-  ),
+  FuturaFaceTracker: path.join(modelsPath, 'futura-face-tracker', 'tf_model'),
 };

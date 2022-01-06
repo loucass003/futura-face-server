@@ -33,23 +33,26 @@ export type TrainerAction =
       type: 'prev-blendshape';
     }
   | {
-      type: 'receive-record';
-      record: string[];
+      type: 'take-picture';
+      record: string;
       index: number;
     }
   | {
-      type: 'delete-record';
+      type: 'delete-picture';
       index: number;
+    }
+  | {
+      type: 'recording';
     };
 
 export interface TrainerState {
   name: string;
-  blendshapesCount: number;
-  currentBlendshape: number[];
+  blendshapes: Record<string, IBlendshape>;
+  currentRecord: string;
   currentBlendshapeIndex: number;
-  currentRecord: string[];
   datasetLoading: boolean;
-  recordLoading: boolean;
+  imageLoading: boolean;
+  recording: boolean;
 }
 
 export interface FaceTrainerData {
@@ -61,16 +64,14 @@ export interface FaceTrainerData {
   prevBlendshape: () => void;
   nextBlendshape: () => void;
   save: () => void;
+  currentBlendshape?: IBlendshape;
+  blendshapesCount: number;
   state: TrainerState;
 }
 
 export const FaceTrainerContext = createContext<FaceTrainerData>(
   undefined as any
 );
-
-function createNewBlendShape(): IBlendshape {
-  return { keys: randomFaceShape(), record: null, recordExists: false };
-}
 
 function reducer(state: TrainerState, action: TrainerAction): TrainerState {
   switch (action.type) {
@@ -80,41 +81,99 @@ function reducer(state: TrainerState, action: TrainerAction): TrainerState {
         ...(action.dataset || {}),
         name: action.name,
         datasetLoading: false,
-        recordLoading: !!action.dataset, // IF we have a dataset we wait for the first image to load, so this needs to be true
+        imageLoading: !!action.dataset, // IF we have a dataset we wait for the first image to load, so this needs to be true
         currentBlendshapeIndex: 0,
       };
     }
     case 'add-blendshape': {
-      return state;
-    }
-    case 'delete-blendshape': {
-      return state;
-    }
-    case 'random-blendshape': {
-      return state;
-    }
-    case 'receive-record': {
+      const len = Object.keys(state.blendshapes).length;
       return {
         ...state,
-        currentRecord: action.record,
-        currentBlendshapeIndex: action.index,
+        blendshapes: {
+          ...state.blendshapes,
+          [`records/${len}`]: {
+            recordExists: false,
+            keys: randomFaceShape(),
+          },
+        },
+        currentBlendshapeIndex: len,
       };
     }
-    case 'delete-record': {
-      return state;
+    case 'delete-blendshape': {
+      // const blendshapes = [...state.blendshapes];
+      // blendshapes.splice(state.currentBlendshapeIndex, 1);
+      delete state.blendshapes[`records/${state.currentBlendshapeIndex}`];
+
+      return {
+        ...state,
+        currentBlendshapeIndex: Math.max(0, state.currentBlendshapeIndex - 1),
+      };
+    }
+    case 'random-blendshape': {
+      return {
+        ...state,
+        blendshapes: {
+          ...state.blendshapes,
+          [`records/${state.currentBlendshapeIndex}`]: {
+            ...state.blendshapes[`records/${state.currentBlendshapeIndex}`],
+            keys: randomFaceShape(),
+          },
+        },
+      };
+    }
+    case 'take-picture': {
+      return {
+        ...state,
+        blendshapes: {
+          ...state.blendshapes,
+          [`records/${action.index}`]: {
+            ...state.blendshapes[`records/${action.index}`],
+            recordExists: !!action.record,
+          },
+        },
+        currentRecord: action.record,
+        imageLoading: false,
+        recording: false,
+      };
+    }
+    case 'delete-picture': {
+      // const blendshapes = [...state.blendshapes];
+
+      // blendshapes[action.index] = {
+      //   ...blendshapes[action.index],
+      //   imageData: null,
+      //   imageExists: false,
+      // };
+
+      return {
+        ...state,
+        blendshapes: {
+          ...state.blendshapes,
+          [`records/${action.index}`]: {
+            ...state.blendshapes[`records/${action.index}`],
+            recordExists: false,
+          },
+        },
+      };
     }
     case 'next-blendshape': {
       return {
         ...state,
         currentBlendshapeIndex: state.currentBlendshapeIndex + 1,
-        recordLoading: true,
+        imageLoading: true,
       };
     }
     case 'prev-blendshape': {
       return {
         ...state,
         currentBlendshapeIndex: state.currentBlendshapeIndex - 1,
-        recordLoading: true,
+        imageLoading: true,
+      };
+    }
+    case 'recording': {
+      return {
+        ...state,
+        recording: true,
       };
     }
     default: {
@@ -132,17 +191,23 @@ export function useProvideFaceTrainer(): FaceTrainerData {
     {
       name: null,
       currentBlendshapeIndex: 0,
+      blendshapes: {
+        [`records/0`]: { keys: randomFaceShape(), recordExists: false },
+      },
+      currentRecord: null,
       datasetLoading: true,
-      recordLoading: true,
+      imageLoading: true,
+      recording: false,
     } as TrainerState
   );
 
-  const onReceiveRecord = (event, { index, frames }) => {
+  const onReceiveRecord = (event, { index, record }) => {
+    const blob = new Blob([record]);
+    const url = URL.createObjectURL(blob);
+
     dispatch({
-      type: 'receive-record',
-      record:
-        (frames && frames.map((image) => `data:image/jpg;base64,${image}`)) ||
-        null,
+      type: 'take-picture',
+      record: url,
       index,
     });
   };
@@ -154,7 +219,7 @@ export function useProvideFaceTrainer(): FaceTrainerData {
     });
   };
 
-  const deletePicture = (dataset: string, index: number) => {
+  const deleteRecord = (dataset: string, index: number) => {
     nativeAPI.send(FaceTrainerChannel.DeleteRecord, {
       name: dataset,
       index,
@@ -204,30 +269,47 @@ export function useProvideFaceTrainer(): FaceTrainerData {
       dispatch({ type: 'add-blendshape' });
     },
     deleteBlendshape: () => {
-      deletePicture(state.name, state.currentBlendshapeIndex);
+      deleteRecord(state.name, state.currentBlendshapeIndex);
       dispatch({ type: 'delete-blendshape' });
     },
     deleteRecord: () => {
       dispatch({
-        type: 'delete-record',
+        type: 'delete-picture',
         index: state.currentBlendshapeIndex,
       });
-      deletePicture(state.name, state.currentBlendshapeIndex);
+      deleteRecord(state.name, state.currentBlendshapeIndex);
     },
     randomBlendshape: () => {
+      if (
+        state.blendshapes[`records/${state.currentBlendshapeIndex}`]
+          .recordExists
+      ) {
+        deleteRecord(state.name, state.currentBlendshapeIndex);
+        dispatch({
+          type: 'delete-picture',
+          index: state.currentBlendshapeIndex,
+        });
+      }
       dispatch({
         type: 'random-blendshape',
       });
     },
     takeRecord: () => {
+      dispatch({
+        type: 'recording',
+      });
       nativeAPI.send(FaceTrainerChannel.RecordPose, {
         dataset: state.name,
         index: state.currentBlendshapeIndex,
-        shapesCount: state.blendshapesCount,
-        blendshapes: state.currentBlendshape,
+        shapesCount: Object.keys(state.blendshapes).length,
+        blendshapes:
+          state.blendshapes[`records/${state.currentBlendshapeIndex}`].keys,
       });
     },
     save: () => {},
+    currentBlendshape:
+      state.blendshapes[`records/${state.currentBlendshapeIndex}`],
+    blendshapesCount: Object.keys(state.blendshapes).length,
   };
 }
 

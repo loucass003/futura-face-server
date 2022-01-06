@@ -46,6 +46,7 @@ export function useProvideFaceTracker(): FaceTracker {
     if (!canvasRef.current) return;
 
     if (canvasRef.current.width !== 240) {
+      console.log('helloooo ?');
       canvasRef.current.width = 240;
       canvasRef.current.height = 240;
     }
@@ -56,9 +57,12 @@ export function useProvideFaceTracker(): FaceTracker {
 
     if (!ctx) return;
 
+    // ctx.clearRect(0, 0, 240, 240);
+
     let blob = new Blob([data.frame]);
     let image = new Image();
     image.src = URL.createObjectURL(blob);
+
     image.onload = () => {
       const clear = () => {
         URL.revokeObjectURL(image.src);
@@ -66,6 +70,7 @@ export function useProvideFaceTracker(): FaceTracker {
         image.onerror = null;
         image = null;
         blob = null;
+        // data.frame = null;
       };
 
       if (!canvasRef.current) {
@@ -75,7 +80,9 @@ export function useProvideFaceTracker(): FaceTracker {
       ctx.drawImage(image, 0, 0, 240, 240, 0, 0, 240, 240);
       clear();
     };
-    image.onerror = (error) => console.log(error);
+    image.onerror = (error) => {
+      console.log(error);
+    };
   };
 
   const updateStatus = (

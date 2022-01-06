@@ -8,7 +8,6 @@ interface IDevice {
 
 interface IBlendshape {
   keys: number[];
-  record: string[];
   recordExists: boolean;
 }
 

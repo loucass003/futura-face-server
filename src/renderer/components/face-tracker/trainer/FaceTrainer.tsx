@@ -2,10 +2,13 @@ import { Button, Container, Grid, Paper } from '@mui/material';
 import { Box } from '@mui/system';
 import { Link } from 'react-router-dom';
 import { Face3DView } from 'renderer/components/commons/Face3DView';
+import { useFaceTracker } from 'renderer/hooks/face-tracker';
 import { useFaceTrainer } from 'renderer/hooks/trainer/face-trainer';
 import { FaceTrackerStream } from '../FaceTrackerStream';
 
 export function FaceTrainer() {
+  const { serverStatus } = useFaceTracker();
+
   const {
     takeRecord,
     deleteRecord,
@@ -15,26 +18,35 @@ export function FaceTrainer() {
     deleteBlendshape,
     randomBlendshape,
     state,
+    currentBlendshape,
+    blendshapesCount,
   } = useFaceTrainer();
 
   return (
-    (!state.datasetLoading && state.currentBlendshape && (
+    (!state.datasetLoading && currentBlendshape && (
       <Container>
         <Grid container spacing={2} mt={2}>
           <Grid item xs={12}>
             <Paper>
-              {state.currentRecord ? (
+              {currentBlendshape.recordExists ? (
                 <Button onClick={deleteRecord}>Delete record</Button>
               ) : (
-                <Button onClick={takeRecord}>Take record</Button>
+                <Button
+                  onClick={takeRecord}
+                  disabled={
+                    state.recording || serverStatus === 'waiting-for-device'
+                  }
+                >
+                  Take record
+                </Button>
               )}
 
               <Button
                 onClick={addBlendshape}
                 disabled={
-                  state.currentBlendshapeIndex !== state.blendshapesCount - 1 ||
-                  !state.currentRecord ||
-                  state.recordLoading
+                  state.currentBlendshapeIndex !== blendshapesCount - 1 ||
+                  state.recording ||
+                  serverStatus === 'waiting-for-device'
                 }
               >
                 Add Blendshape
@@ -43,28 +55,41 @@ export function FaceTrainer() {
               <Button
                 onClick={deleteBlendshape}
                 disabled={
-                  state.blendshapesCount - 1 !== state.currentBlendshapeIndex ||
-                  state.currentBlendshapeIndex === 0
+                  blendshapesCount - 1 !== state.currentBlendshapeIndex ||
+                  state.currentBlendshapeIndex === 0 ||
+                  state.recording ||
+                  serverStatus === 'waiting-for-device'
                 }
               >
                 Delete Blendshape
               </Button>
 
-              <Button onClick={randomBlendshape}>Random Blendshape</Button>
+              <Button
+                onClick={randomBlendshape}
+                disabled={
+                  state.recording || serverStatus === 'waiting-for-device'
+                }
+              >
+                Random Blendshape
+              </Button>
 
               <Button
                 onClick={prevBlendshape}
-                disabled={state.currentBlendshapeIndex === 0}
+                disabled={
+                  state.currentBlendshapeIndex === 0 ||
+                  state.recording ||
+                  serverStatus === 'waiting-for-device'
+                }
               >
                 Prev
               </Button>
-              {`${state.currentBlendshapeIndex + 1} / ${
-                state.blendshapesCount
-              }`}
+              {`${state.currentBlendshapeIndex + 1} / ${blendshapesCount}`}
               <Button
                 onClick={nextBlendshape}
                 disabled={
-                  state.currentBlendshapeIndex === state.blendshapesCount - 1
+                  state.currentBlendshapeIndex === blendshapesCount - 1 ||
+                  state.recording ||
+                  serverStatus === 'waiting-for-device'
                 }
               >
                 NEXT
@@ -74,9 +99,9 @@ export function FaceTrainer() {
                 component={Link}
                 to="/face-tracker-datasets"
                 disabled={
-                  !state.currentBlendshape ||
-                  state.recordLoading ||
-                  !state.currentRecord
+                  state.currentBlendshapeIndex !== blendshapesCount - 1 ||
+                  state.recording ||
+                  serverStatus === 'waiting-for-device'
                 }
               >
                 Done
@@ -86,14 +111,17 @@ export function FaceTrainer() {
           <Grid item xs={6}>
             <Paper>
               <Box p={2}>
-                {!state.recordLoading ? (
+                {!state.imageLoading ? (
                   <>
-                    {state.currentRecord ? (
-                      <img
-                        src={state.currentRecord[0]}
-                        alt={`${state.currentBlendshapeIndex}`}
+                    {currentBlendshape.recordExists && state.currentRecord ? (
+                      <video
+                        width="240"
+                        height="240"
+                        controls
                         style={{ width: '100%' }}
-                      />
+                      >
+                        <source src={state.currentRecord} type="video/mp4" />
+                      </video>
                     ) : (
                       <FaceTrackerStream />
                     )}
@@ -105,7 +133,7 @@ export function FaceTrainer() {
             </Paper>
           </Grid>
           <Grid item xs={6}>
-            <Face3DView blendShapes={state.currentBlendshape} />
+            <Face3DView blendShapes={currentBlendshape.keys} />
             {/* <Face3DView blendShapes={blendShapes}/> */}
           </Grid>
         </Grid>

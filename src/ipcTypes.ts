@@ -84,7 +84,7 @@ export interface IpcChannelMap {
     shapesCount: number;
   };
   [FaceTrainerChannel.AskRecord]: { index: number; dataset: string };
-  [FaceTrainerChannel.ReceiveRecord]: { frames: string[]; index: number };
+  [FaceTrainerChannel.ReceiveRecord]: { record: Buffer; index: number };
   [FaceTrainerChannel.SavedDatasets]: { datasets_names: string[] };
   [FaceTrainerChannel.AskSavedDatasets]: void;
 }

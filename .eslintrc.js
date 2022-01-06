@@ -16,6 +16,7 @@ module.exports = {
     'no-restricted-syntax': 'off',
     'no-continue': 'off',
     'no-await-in-loop': 'off',
+    'jsx-a11y/media-has-caption': 'off',
   },
   parserOptions: {
     ecmaVersion: 2020,
