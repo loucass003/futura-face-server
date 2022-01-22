@@ -1,7 +1,7 @@
 {
   "name": "futura-server",
   "productName": "futura-server",
-  "version": "5.0.1",
+  "version": "5.1.0",
   "description": "Futura devices server",
   "main": "./dist/main/main.js",
   "author": {
