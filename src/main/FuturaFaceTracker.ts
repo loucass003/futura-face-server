@@ -130,23 +130,24 @@ export class FuturaFaceTracker extends Device {
   public async onJPEGImage(jpeg: Buffer) {
     tf.tidy(() => {
       const grayscale = tf.node
-        .decodeJpeg(jpeg)
+        .decodeJpeg(jpeg, 3)
         .resizeBilinear([224, 224])
         .reshape([224, 224, 3])
-        .mean(2);
+        .mean(2)
+        .toFloat();
       const input = tf
         .stack([grayscale, grayscale, grayscale], 2)
         .reshape([3, 224, 224])
         .div(255)
         .toFloat()
         .expandDims(0);
-      // console.log(input.dataSync());
       const result = this.model.predict(input) as Tensor;
       const syncResult = result.dataSync();
       this.renderer.send(FFTChannel.NewFrame, {
         deviceId: this.id,
         frame: jpeg,
-        blendShapes: syncResult,
+        blendShapes: syncResult.map((v) => Math.max(0, v)),
+        // blendShapes: [],
       });
       this.currentFrame = jpeg;
       this.newFramesSubject.next(jpeg);
